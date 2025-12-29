@@ -24,6 +24,36 @@ app.get("/", (req, res) => {
 });
 
 /* ----------------------------------------------------
+   LOGIN
+---------------------------------------------------- */
+app.post("/login", (req, res) => {
+  const { username, password } = req.body;
+
+  if (!username || !password) {
+    return res.status(400).json({ message: "Username and password are required" });
+  }
+
+  const q = "SELECT * FROM users WHERE username = ? AND password = ?";
+  // Note: pg uses $1, $2 syntax, not ?
+  const pgQuery = "SELECT * FROM users WHERE username = $1 AND password = $2";
+
+  db.query(pgQuery, [username, password], (err, data) => {
+    if (err) {
+      console.log(err);
+      return res.status(500).json({ message: "Database error", error: err });
+    }
+    if (data.rows.length === 0) {
+      return res.status(401).json({ message: "Invalid credentials" });
+    }
+    
+    const user = data.rows[0];
+    // Don't send password back
+    const { password: _, ...userInfo } = user;
+    return res.status(200).json(userInfo);
+  });
+});
+
+/* ----------------------------------------------------
    GET ALL ALBUMS
 ---------------------------------------------------- */
 app.get("/albums", (req, res) => {
@@ -56,6 +86,134 @@ app.post("/contact", (req, res) => {
       return res.status(500).json({ message: "Database error", error: err });
     }
     return res.status(201).json(data.rows[0]);
+  });
+});
+
+/* ----------------------------------------------------
+   ADMIN: GET ALL CONTACTS
+---------------------------------------------------- */
+app.get("/contacts", (req, res) => {
+  const q = "SELECT * FROM contacts ORDER BY created_at DESC";
+
+  db.query(q, (err, data) => {
+    if (err) {
+      console.log(err);
+      return res.status(500).json({ message: "Database error", error: err });
+    }
+    return res.status(200).json(data.rows);
+  });
+});
+
+/* ----------------------------------------------------
+   ADMIN: DELETE CONTACT
+---------------------------------------------------- */
+app.delete("/contacts/:id", (req, res) => {
+  const id = req.params.id;
+  const q = "DELETE FROM contacts WHERE id = $1";
+
+  db.query(q, [id], (err, data) => {
+    if (err) {
+      console.log(err);
+      return res.status(500).json({ message: "Database error", error: err });
+    }
+    return res.status(200).json({ message: "Message deleted successfully" });
+  });
+});
+
+/* ----------------------------------------------------
+   ADMIN: ADD ALBUM
+---------------------------------------------------- */
+app.post("/albums", (req, res) => {
+  const { title, artist, url, image_url } = req.body;
+  const q = "INSERT INTO albums (title, artist, url, image_url) VALUES ($1, $2, $3, $4) RETURNING *";
+
+  db.query(q, [title, artist, url, image_url], (err, data) => {
+    if (err) {
+      console.log(err);
+      return res.status(500).json({ message: "Database error", error: err });
+    }
+    return res.status(201).json(data.rows[0]);
+  });
+});
+
+/* ----------------------------------------------------
+   ADMIN: UPDATE ALBUM
+---------------------------------------------------- */
+app.put("/albums/:id", (req, res) => {
+  const id = req.params.id;
+  const { title, artist, url, image_url } = req.body;
+  const q = "UPDATE albums SET title = $1, artist = $2, url = $3, image_url = $4 WHERE id = $5";
+
+  db.query(q, [title, artist, url, image_url, id], (err, data) => {
+    if (err) {
+      console.log(err);
+      return res.status(500).json({ message: "Database error", error: err });
+    }
+    return res.status(200).json({ message: "Album updated successfully" });
+  });
+});
+
+/* ----------------------------------------------------
+   ADMIN: DELETE ALBUM
+---------------------------------------------------- */
+app.delete("/albums/:id", (req, res) => {
+  const id = req.params.id;
+  const q = "DELETE FROM albums WHERE id = $1";
+
+  db.query(q, [id], (err, data) => {
+    if (err) {
+      console.log(err);
+      return res.status(500).json({ message: "Database error", error: err });
+    }
+    return res.status(200).json({ message: "Album deleted successfully" });
+  });
+});
+
+/* ----------------------------------------------------
+   FAVORITES: GET USER FAVORITES
+---------------------------------------------------- */
+app.get("/favorites/:userId", (req, res) => {
+  const userId = req.params.userId;
+  const q = "SELECT album_id FROM favorites WHERE user_id = $1";
+
+  db.query(q, [userId], (err, data) => {
+    if (err) {
+      console.log(err);
+      return res.status(500).json({ message: "Database error", error: err });
+    }
+    // Return array of IDs like [1, 5, 12]
+    const favoriteIds = data.rows.map(row => row.album_id);
+    return res.status(200).json(favoriteIds);
+  });
+});
+
+/* ----------------------------------------------------
+   FAVORITES: TOGGLE FAVORITE
+---------------------------------------------------- */
+app.post("/favorites", (req, res) => {
+  const { userId, albumId } = req.body;
+  
+  // Check if exists
+  const checkQ = "SELECT * FROM favorites WHERE user_id = $1 AND album_id = $2";
+  
+  db.query(checkQ, [userId, albumId], (err, data) => {
+    if (err) return res.status(500).json(err);
+    
+    if (data.rows.length > 0) {
+      // Exists -> Delete it (Unfavorite)
+      const deleteQ = "DELETE FROM favorites WHERE user_id = $1 AND album_id = $2";
+      db.query(deleteQ, [userId, albumId], (err2) => {
+        if (err2) return res.status(500).json(err2);
+        return res.status(200).json({ message: "Removed from favorites", action: "removed" });
+      });
+    } else {
+      // Doesn't exist -> Add it (Favorite)
+      const insertQ = "INSERT INTO favorites (user_id, album_id) VALUES ($1, $2)";
+      db.query(insertQ, [userId, albumId], (err2) => {
+        if (err2) return res.status(500).json(err2);
+        return res.status(201).json({ message: "Added to favorites", action: "added" });
+      });
+    }
   });
 });
 

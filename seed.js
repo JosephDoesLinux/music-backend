@@ -40,6 +40,26 @@ const createContactsTableQuery = `
   );
 `;
 
+const createUsersTableQuery = `
+  CREATE TABLE IF NOT EXISTS users (
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(255) UNIQUE NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    role VARCHAR(50) NOT NULL DEFAULT 'user',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  );
+`;
+
+const createFavoritesTableQuery = `
+  CREATE TABLE IF NOT EXISTS favorites (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    album_id INTEGER REFERENCES albums(id) ON DELETE CASCADE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id, album_id)
+  );
+`;
+
 const insertAlbumQuery = `
   INSERT INTO albums (title, artist, url, image_url)
   VALUES ($1, $2, $3, $4)
@@ -59,9 +79,23 @@ async function seed() {
     await client.query(createContactsTableQuery);
     console.log("Table 'contacts' created or already exists.");
 
+    await client.query(createUsersTableQuery);
+    console.log("Table 'users' created or already exists.");
+
+    await client.query(createFavoritesTableQuery);
+    console.log("Table 'favorites' created or already exists.");
+
     // Clear existing data to prevent duplicates
-    await client.query("TRUNCATE TABLE albums RESTART IDENTITY");
-    console.log("Cleared existing albums.");
+    // We use CASCADE to clear favorites when users/albums are cleared
+    await client.query("TRUNCATE TABLE albums, users RESTART IDENTITY CASCADE");
+    console.log("Cleared existing albums and users.");
+
+    // Insert Admin User
+    await client.query(
+      "INSERT INTO users (username, password, role) VALUES ($1, $2, $3)",
+      ["admin", "admin", "admin"]
+    );
+    console.log("Admin user created (admin/admin).");
 
     // Read JSON file
     try {
