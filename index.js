@@ -33,18 +33,17 @@ app.get("/", (req, res) => {
   res.json({ message: "Welcome to the Music Backend API" });
 });
 
-// Example API to get data (Uncomment and adapt when you have a table)
-/*
-app.get("/songs", async (req, res) => {
+// Get all albums
+app.get("/albums", async (req, res) => {
   try {
-    const result = await pool.query("SELECT * FROM songs");
+    const result = await pool.query("SELECT * FROM albums ORDER BY id ASC");
     res.json(result.rows);
   } catch (err) {
     console.error(err.message);
     res.status(500).send("Server Error");
   }
 });
-*/
+
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
