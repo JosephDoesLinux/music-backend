@@ -10,7 +10,7 @@ const { Pool } = pg;
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false,
+  ssl: { rejectUnauthorized: false },
 });
 
 const __filename = fileURLToPath(import.meta.url);
@@ -30,6 +30,16 @@ const createTableQuery = `
   );
 `;
 
+const createContactsTableQuery = `
+  CREATE TABLE IF NOT EXISTS contacts (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    email VARCHAR(255) NOT NULL,
+    message TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  );
+`;
+
 const insertAlbumQuery = `
   INSERT INTO albums (title, artist, url, image_url)
   VALUES ($1, $2, $3, $4)
@@ -45,6 +55,13 @@ async function seed() {
     // Create Table
     await client.query(createTableQuery);
     console.log("Table 'albums' created or already exists.");
+
+    await client.query(createContactsTableQuery);
+    console.log("Table 'contacts' created or already exists.");
+
+    // Clear existing data to prevent duplicates
+    await client.query("TRUNCATE TABLE albums RESTART IDENTITY");
+    console.log("Cleared existing albums.");
 
     // Read JSON file
     try {
