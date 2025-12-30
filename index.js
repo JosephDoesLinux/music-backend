@@ -170,6 +170,54 @@ app.delete("/albums/:id", (req, res) => {
 });
 
 /* ----------------------------------------------------
+   ADMIN: GET ALL USERS
+---------------------------------------------------- */
+app.get("/users", (req, res) => {
+  const q = "SELECT id, username, role, created_at FROM users ORDER BY id ASC";
+
+  db.query(q, (err, data) => {
+    if (err) {
+      console.log(err);
+      return res.status(500).json({ message: "Database error", error: err });
+    }
+    return res.status(200).json(data.rows);
+  });
+});
+
+/* ----------------------------------------------------
+   ADMIN: UPDATE USER
+---------------------------------------------------- */
+app.put("/users/:id", (req, res) => {
+  const id = req.params.id;
+  const { username, role } = req.body;
+  const q = "UPDATE users SET username = $1, role = $2 WHERE id = $3";
+
+  db.query(q, [username, role, id], (err, data) => {
+    if (err) {
+      console.log(err);
+      return res.status(500).json({ message: "Database error", error: err });
+    }
+    return res.status(200).json({ message: "User updated successfully" });
+  });
+});
+
+/* ----------------------------------------------------
+   ADMIN: DELETE USER
+---------------------------------------------------- */
+app.delete("/users/:id", (req, res) => {
+  const id = req.params.id;
+  const q = "DELETE FROM users WHERE id = $1";
+
+  db.query(q, [id], (err, data) => {
+    if (err) {
+      console.log(err);
+      return res.status(500).json({ message: "Database error", error: err });
+    }
+    return res.status(200).json({ message: "User deleted successfully" });
+  });
+});
+
+/* ----------------------------------------------------
    FAVORITES: GET USER FAVORITES
 ---------------------------------------------------- */
 app.get("/favorites/:userId", (req, res) => {
