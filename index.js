@@ -33,8 +33,6 @@ app.post("/login", (req, res) => {
     return res.status(400).json({ message: "Username and password are required" });
   }
 
-  const q = "SELECT * FROM users WHERE username = ? AND password = ?";
-  // Note: pg uses $1, $2 syntax, not ?
   const pgQuery = "SELECT * FROM users WHERE username = $1 AND password = $2";
 
   db.query(pgQuery, [username, password], (err, data) => {
@@ -50,6 +48,40 @@ app.post("/login", (req, res) => {
     // Don't send password back
     const { password: _, ...userInfo } = user;
     return res.status(200).json(userInfo);
+  });
+});
+
+/* ----------------------------------------------------
+   REGISTER
+---------------------------------------------------- */
+app.post("/register", (req, res) => {
+  const { username, password } = req.body;
+
+  if (!username || !password) {
+    return res.status(400).json({ message: "Username and password are required" });
+  }
+
+  // Check if user already exists
+  const checkQuery = "SELECT * FROM users WHERE username = $1";
+  db.query(checkQuery, [username], (err, data) => {
+    if (err) {
+      console.log(err);
+      return res.status(500).json({ message: "Database error", error: err });
+    }
+    if (data.rows.length > 0) {
+      return res.status(409).json({ message: "Username already exists" });
+    }
+
+    // Insert new user
+    // Default role is 'user'
+    const insertQuery = "INSERT INTO users (username, password, role) VALUES ($1, $2, 'user') RETURNING id, username, role, created_at";
+    db.query(insertQuery, [username, password], (err, data) => {
+      if (err) {
+        console.log(err);
+        return res.status(500).json({ message: "Database error", error: err });
+      }
+      return res.status(201).json(data.rows[0]);
+    });
   });
 });
 
@@ -185,19 +217,19 @@ app.get("/users", (req, res) => {
 });
 
 /* ----------------------------------------------------
-   ADMIN: UPDATE USER
+   ADMIN: UPDATE USER ROLE
 ---------------------------------------------------- */
 app.put("/users/:id", (req, res) => {
   const id = req.params.id;
-  const { username, role } = req.body;
-  const q = "UPDATE users SET username = $1, role = $2 WHERE id = $3";
+  const { role } = req.body;
+  const q = "UPDATE users SET role = $1 WHERE id = $2";
 
-  db.query(q, [username, role, id], (err, data) => {
+  db.query(q, [role, id], (err, data) => {
     if (err) {
       console.log(err);
       return res.status(500).json({ message: "Database error", error: err });
     }
-    return res.status(200).json({ message: "User updated successfully" });
+    return res.status(200).json({ message: "User role updated successfully" });
   });
 });
 
