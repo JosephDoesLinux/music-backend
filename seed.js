@@ -1,8 +1,5 @@
 import pg from "pg";
 import dotenv from "dotenv";
-import fs from "fs/promises";
-import path from "path";
-import { fileURLToPath } from "url";
 
 dotenv.config();
 
@@ -12,12 +9,6 @@ const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false },
 });
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-// Adjust the path to where your albums.json is located
-const albumsFilePath = path.join(__dirname, "../music-app/src/data/albums.json");
 
 const createTableQuery = `
   CREATE TABLE IF NOT EXISTS albums (
@@ -60,12 +51,6 @@ const createFavoritesTableQuery = `
   );
 `;
 
-const insertAlbumQuery = `
-  INSERT INTO albums (title, artist, url, image_url)
-  VALUES ($1, $2, $3, $4)
-  RETURNING *;
-`;
-
 async function seed() {
   try {
     // Connect
@@ -97,27 +82,40 @@ async function seed() {
     );
     console.log("Admin user created (admin/admin).");
 
-    // Read JSON file
-    try {
-        const data = await fs.readFile(albumsFilePath, "utf-8");
-        const albums = JSON.parse(data);
+    // Insert Albums from Dump
+    const insertQueries = [
+      `INSERT INTO public.albums VALUES (2, 'Habibi Funk 031: A Selection Of Music From Libyan Tapes', 'Various Artists', 'https://habibifunkrecords.bandcamp.com/album/habibi-funk-031-a-selection-of-music-from-libyan-tapes', 'https://f4.bcbits.com/img/a0933768371_2.jpg', '2025-12-29 21:52:46.724512');`,
+      `INSERT INTO public.albums VALUES (3, 'Habibi Funk 030: Hawalat', 'Charif Megarbane', 'https://habibifunkrecords.bandcamp.com/album/habibi-funk-030-hawalat', 'https://f4.bcbits.com/img/a3034887417_2.jpg', '2025-12-29 21:52:46.824829');`,
+      `INSERT INTO public.albums VALUES (4, 'Habibi Funk 029: Samh Almea''ad', 'Cheb Bakr', 'https://habibifunkrecords.bandcamp.com/album/habibi-funk-029-samh-almeaad', 'https://f4.bcbits.com/img/a2848262659_2.jpg', '2025-12-29 21:52:46.923853');`,
+      `INSERT INTO public.albums VALUES (5, 'Habibi Funk Limited 002: Hamra / Red', 'Charif Megarbane', 'https://habibifunkrecords.bandcamp.com/album/habibi-funk-limited-002-hamra-red', 'https://f4.bcbits.com/img/a3559157440_2.jpg', '2025-12-29 21:52:47.030616');`,
+      `INSERT INTO public.albums VALUES (6, 'Habibi Funk 027: Musique Originale De Films (Volume 2)', 'Ahmed Malek', 'https://habibifunkrecords.bandcamp.com/album/habibi-funk-027-musique-originale-de-films-volume-2', 'https://f4.bcbits.com/img/a3182835865_2.jpg', '2025-12-29 21:52:47.215957');`,
+      `INSERT INTO public.albums VALUES (7, 'Habibi Funk 025: East of Any Place', 'Rogér Fakhr', 'https://habibifunkrecords.bandcamp.com/album/habibi-funk-025-east-of-any-place', 'https://f4.bcbits.com/img/a0205422707_2.jpg', '2025-12-29 21:52:47.412983');`,
+      `INSERT INTO public.albums VALUES (8, 'Habibi Funk 026: Solidarity with Libya', 'Various Artists', 'https://habibifunkrecords.bandcamp.com/album/habibi-funk-026-solidarity-with-libya', 'https://f4.bcbits.com/img/a2297884769_2.jpg', '2025-12-29 21:52:47.54272');`,
+      `INSERT INTO public.albums VALUES (9, 'Habibi Funk 024: The Father of Libyan Reggae', 'Ibrahim Hesnawi', 'https://habibifunkrecords.bandcamp.com/album/habibi-funk-024-the-father-of-libyan-reggae', 'https://f4.bcbits.com/img/a2761907669_2.jpg', '2025-12-29 21:52:47.713195');`,
+      `INSERT INTO public.albums VALUES (10, 'Habibi Funk 023: Marzipan', 'Charif Megarbane', 'https://habibifunkrecords.bandcamp.com/album/habibi-funk-023-marzipan', 'https://f4.bcbits.com/img/a2839615640_2.jpg', '2025-12-29 21:52:47.776282');`,
+      `INSERT INTO public.albums VALUES (11, 'Habibi Funk 022: Subhana', 'Ahmed Ben Ali', 'https://habibifunkrecords.bandcamp.com/album/habibi-funk-022-subhana', 'https://f4.bcbits.com/img/a3873739876_2.jpg', '2025-12-29 21:52:47.849703');`,
+      `INSERT INTO public.albums VALUES (12, 'Habibi Funk 021: Free Music (Part 1)', 'The Free Music', 'https://habibifunkrecords.bandcamp.com/album/habibi-funk-021-free-music-part-1', 'https://f4.bcbits.com/img/a3282214348_2.jpg', '2025-12-29 21:52:47.950716');`,
+      `INSERT INTO public.albums VALUES (13, 'Tayyara Warak', 'Charif Megarbane', 'https://habibifunkrecords.bandcamp.com/album/tayyara-warak', 'https://f4.bcbits.com/img/a2449313503_2.jpg', '2025-12-29 21:52:48.056577');`,
+      `INSERT INTO public.albums VALUES (14, 'Habibi Funk 020: Orkos', 'Maha', 'https://habibifunkrecords.bandcamp.com/album/habibi-funk-020-orkos', 'https://f4.bcbits.com/img/a2477830465_2.jpg', '2025-12-29 21:52:48.154593');`,
+      `INSERT INTO public.albums VALUES (15, 'Habibi Funk 019: Oghneya', 'Ferkat Al Ard', 'https://habibifunkrecords.bandcamp.com/album/habibi-funk-019-oghneya', 'https://f4.bcbits.com/img/a2212652305_2.jpg', '2025-12-29 21:52:48.2595');`,
+      `INSERT INTO public.albums VALUES (16, 'Habibi Funk 018: The SLAM! Years (1983 - 1988)', 'Hamid El Shaeri', 'https://habibifunkrecords.bandcamp.com/album/habibi-funk-018-the-slam-years-1983-1988', 'https://f4.bcbits.com/img/a0130913908_2.jpg', '2025-12-29 21:52:48.362404');`,
+      `INSERT INTO public.albums VALUES (17, 'Habibi Funk 017: Chant Amazigh', 'Majid Soula', 'https://habibifunkrecords.bandcamp.com/album/habibi-funk-017-chant-amazigh', 'https://f4.bcbits.com/img/a2599307222_2.jpg', '2025-12-29 21:52:48.465151');`,
+      `INSERT INTO public.albums VALUES (18, 'Habibi Funk 016: Fine Anyway', 'Rogér Fakhr', 'https://habibifunkrecords.bandcamp.com/album/habibi-funk-016-fine-anyway-2', 'https://f4.bcbits.com/img/a2697031363_2.jpg', '2025-12-29 21:52:48.56659');`,
+      `INSERT INTO public.albums VALUES (19, 'Habibi Funk 015: An eclectic selection of music from the Arab world, part 2', 'Various Artists', 'https://habibifunkrecords.bandcamp.com/album/habibi-funk-015-an-eclectic-selection-of-music-from-the-arab-world-part-2', 'https://f4.bcbits.com/img/a2911442712_2.jpg', '2025-12-29 21:52:48.664159');`,
+      `INSERT INTO public.albums VALUES (20, 'Habibi Funk 013: The King Of Sudanese Jazz', 'Sharhabil Ahmed', 'https://habibifunkrecords.bandcamp.com/album/habibi-funk-013-the-king-of-sudanese-jazz', 'https://f4.bcbits.com/img/a3893589837_2.jpg', '2025-12-29 21:52:48.770539');`,
+      `INSERT INTO public.albums VALUES (1, 'Habibi Funk 033: Bourj Hammoud Groove', 'Ara Kekedjian', 'https://habibifunkrecords.bandcamp.com/album/habibi-funk-033-bourj-hammoud-groove', 'https://f4.bcbits.com/img/a3296700033_2.jpg', '2025-12-29 21:52:46.620558');`,
+    ];
 
-        // Insert Data
-        for (const album of albums) {
-        await client.query(insertAlbumQuery, [
-            album.title,
-            album.artist,
-            album.url,
-            album.image_url,
-        ]);
-        console.log(`Inserted: ${album.title}`);
-        }
-
-        console.log("Seeding complete!");
-    } catch (fileError) {
-        console.error(`Error reading file at ${albumsFilePath}:`, fileError.message);
-        console.log("Please ensure the path to albums.json is correct.");
+    for (const query of insertQueries) {
+      await client.query(query);
     }
+    console.log("Inserted albums from dump.");
+
+    // Update Sequence
+    await client.query("SELECT setval('albums_id_seq', (SELECT MAX(id) FROM albums));");
+    console.log("Updated albums_id_seq.");
+
+    console.log("Seeding complete!");
     
     client.release();
   } catch (err) {
